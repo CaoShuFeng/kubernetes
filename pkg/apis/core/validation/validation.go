@@ -4591,10 +4591,14 @@ func validateResourceQuotaScopes(resourceQuotaSpec *core.ResourceQuotaSpec, fld 
 		if !helper.IsStandardResourceQuotaScope(string(scope)) {
 			allErrs = append(allErrs, field.Invalid(fldPath, resourceQuotaSpec.Scopes, "unsupported scope"))
 		}
+		unsupportedResource := []string{}
 		for _, k := range hardLimits.List() {
 			if helper.IsStandardQuotaResourceName(k) && !helper.IsResourceQuotaScopeValidForResource(scope, k) {
-				allErrs = append(allErrs, field.Invalid(fldPath, resourceQuotaSpec.Scopes, "unsupported scope applied to resource"))
+				unsupportedResource = append(unsupportedResource, k)
 			}
+		}
+		if len(unsupportedResource) != 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath, resourceQuotaSpec.Scopes, fmt.Sprintf("unsupported scope %q applied to resource: %v", scope, unsupportedResource)))
 		}
 		scopeSet.Insert(string(scope))
 	}
@@ -4604,7 +4608,7 @@ func validateResourceQuotaScopes(resourceQuotaSpec *core.ResourceQuotaSpec, fld 
 	}
 	for _, invalidScopePair := range invalidScopePairs {
 		if scopeSet.HasAll(invalidScopePair.List()...) {
-			allErrs = append(allErrs, field.Invalid(fldPath, resourceQuotaSpec.Scopes, "conflicting scopes"))
+			allErrs = append(allErrs, field.Invalid(fldPath, resourceQuotaSpec.Scopes, fmt.Sprintf("conflicting scopes: %v", invalidScopePair.List())))
 		}
 	}
 	return allErrs
